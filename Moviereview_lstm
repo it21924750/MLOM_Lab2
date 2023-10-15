@@ -1,0 +1,163 @@
+import pandas as pd
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import matplotlib.pyplot as plt
+import seaborn as sns
+import re  # For regular expressions
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+import nltk
+
+# Download stopwords data
+nltk.download('stopwords')
+
+
+
+# Load your movie reviews dataset in CSV format
+# Replace 'movie_reviews.csv' with your actual file path
+df = pd.read_csv('movie_reviews.csv')
+
+
+
+# Check for null values in the dataset
+null_values = df.isnull().sum()
+print("Null Values in Dataset:")
+print(null_values)
+
+# Display dataset information
+print("Dataset Information:")
+df.info()
+
+# Display the unique values in the "sentiment" column
+unique_sentiments = df['sentiment'].unique()
+print("Unique Sentiments:", unique_sentiments)
+
+# Get the count of each sentiment label
+sentiment_counts = df['sentiment'].value_counts()
+
+# Create a count plot for the sentiment labels
+plt.figure(figsize=(8, 6))
+sns.countplot(data=df, x='sentiment')
+plt.title("Sentiment Label Counts")
+plt.xlabel("Sentiment")
+plt.ylabel("Count")
+
+# Display the count plot
+plt.show()
+
+# Display the shape of the DataFrame
+print("Shape of the dataset:", df.shape)
+
+# Display the first few rows of the DataFrame
+print("First few rows of the dataset:")
+print(df.head())
+
+
+
+
+# Function to preprocess text (remove special characters, stopwords, and apply stemming)
+def preprocess_text(text):
+    # Remove special characters and numbers
+    text = re.sub(r'[^a-zA-Z]', ' ', text)
+
+    # Convert to lowercase
+    text = text.lower()
+
+    # Tokenize the text
+    words = text.split()
+
+    # Remove stopwords
+    stop_words = set(stopwords.words('english'))
+    words = [word for word in words if word not in stop_words]
+
+    # Apply stemming
+    stemmer = PorterStemmer()
+    words = [stemmer.stem(word) for word in words]
+
+    return ' '.join(words)
+
+
+# Preprocess the dataset
+df['review_text'] = df['review_text'].apply(preprocess_text)
+
+tokenizer = Tokenizer(num_words=5000, oov_token="<OOV>")
+tokenizer.fit_on_texts(df['review_text'])
+X = tokenizer.texts_to_sequences(df['review_text'])
+X = pad_sequences(X, maxlen=100, padding='post', truncating='post')
+
+label_encoder = LabelEncoder()
+df['sentiment'] = label_encoder.fit_transform(df['sentiment'])
+
+
+
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, df['sentiment'], test_size=0.2, random_state=42)
+
+
+
+# Build the RNN (LSTM) model with a Dropout layer
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Embedding(input_dim=5000, output_dim=32, input_length=100))
+model.add(tf.keras.layers.LSTM(32))
+model.add(Dropout(0.2))
+model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+
+
+# Train the model and keep track of training history
+history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test))
+
+
+
+# Evaluate the model
+test_loss, test_accuracy = model.evaluate(X_test, y_test)
+print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
+
+
+
+# Example review for prediction
+example_review = "This movie is fantastic, I absolutely loved it."
+
+
+
+# Preprocess the example review
+example_review = preprocess_text(example_review)  # Apply preprocessing to the example review
+example_review_sequence = tokenizer.texts_to_sequences([example_review])
+example_review_sequence = pad_sequences(example_review_sequence, maxlen=100, padding='post', truncating='post')
+
+# Predict sentiment for the example review
+predicted_sentiment = model.predict(example_review_sequence)
+
+# Display the predicted sentiment
+if predicted_sentiment >= 0.5:
+    print("Predicted Sentiment: Positive")
+else:
+    print("Predicted Sentiment: Negative")
+
+# Plot the training and validation accuracy
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.title('Training and Validation Accuracy')
+
+# Plot the training and validation loss
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.title('Training and Validation Loss')
+
+plt.show()
