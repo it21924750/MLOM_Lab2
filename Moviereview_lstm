@@ -1,3 +1,18 @@
+Imports the necessary libraries and downloads the NLTK stopwords data.
+Loads a movie reviews dataset from a CSV file.
+Defines a preprocessing function (preprocess_text) to remove special characters, convert text to lowercase, tokenize, remove stopwords, and apply stemming.
+Applies the preprocessing function to the movie review text in the dataset.
+Tokenizes and pads the preprocessed text data.
+Encodes the sentiment labels (positive or negative) using a label encoder.
+Splits the data into training and test sets.
+Builds an LSTM-based model for sentiment analysis.
+Compiles and trains the model using the training data.
+Evaluates the model's accuracy on the test data.
+Provides an example review, preprocesses it, and predicts its sentiment (positive or negative) using the trained model.
+Displays the predicted sentiment and plots the training and validation accuracy and loss.
+
+
+
 import pandas as pd
 import numpy as np
 import tensorflow as tf
